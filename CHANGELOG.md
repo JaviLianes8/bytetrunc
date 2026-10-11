@@ -8,4 +8,5 @@ All notable changes to this project are documented here. The format follows
 
 ## [0.1.0]
 
-- First release.
+- First release: `truncate_bytes` with character and grapheme boundaries and a counted
+  suffix, plus the `byte_len` helper.
