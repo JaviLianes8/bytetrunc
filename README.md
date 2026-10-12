@@ -88,8 +88,8 @@ no runtime dependencies.
 
 ## License
 
-MIT. See [LICENSE](LICENSE). The Unicode data files in `data/ucd/` and the tables generated
-from them are covered by the [Unicode License v3](LICENSE-UNICODE), fetched from
+MIT. See [LICENSE](LICENSE). The property tables in `src/bytetrunc/_ucd_*.py` are generated
+from the Unicode Character Database and are covered by the [Unicode License v3](LICENSE-UNICODE), fetched from
 https://www.unicode.org/license.txt.
 
 ## Links
