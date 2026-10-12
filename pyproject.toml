@@ -4,21 +4,30 @@ build-backend = "hatchling.build"
 
 [project]
 name = "bytetrunc"
-version = "0.1.0"
+version = "0.2.0"
 description = "Truncate a string to a maximum number of UTF-8 bytes on a safe character or grapheme boundary, with an optional counted suffix"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
-license-files = ["LICENSE"]
+license-files = ["LICENSE", "LICENSE-UNICODE"]
 authors = [{ name = "Javier Lianes", email = "javier@lianes8studio.com" }]
-keywords = []
+keywords = ["utf-8", "truncate", "bytes", "unicode", "grapheme", "uax29", "utf-16", "filename", "sms"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Environment :: Console",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Text Processing",
+    "Topic :: Software Development :: Libraries",
     "Typing :: Typed",
 ]
 dependencies = []
+
+[project.scripts]
+bytetrunc = "bytetrunc._cli:main"
 
 [project.optional-dependencies]
 dev = ["ruff", "mypy", "pytest", "build", "twine"]
