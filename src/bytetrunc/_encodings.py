@@ -16,6 +16,8 @@ def normalize_encoding(encoding: str) -> str:
     encodings (``"utf-16"``, ``"utf-32"``, ``"utf-8-sig"``) are rejected because the
     mark would change the byte count in a way callers rarely expect.
     """
+    if not isinstance(encoding, str):
+        raise TypeError(f"encoding must be a str, got {type(encoding).__name__}")
     try:
         name = codecs.lookup(encoding).name
     except LookupError:
@@ -68,7 +70,7 @@ def _sequence_length(lead: int) -> int:
     return 1
 
 
-def cut_utf8(data: bytes, max_bytes: int | None = None) -> bytes:
+def cut_utf8(data: bytes | bytearray | memoryview, max_bytes: int | None = None) -> bytes:
     """Cut raw UTF-8 ``data`` to at most ``max_bytes`` without ending mid-sequence.
 
     Works on bytes without decoding them, which suits network reads, fixed-size
@@ -85,6 +87,10 @@ def cut_utf8(data: bytes, max_bytes: int | None = None) -> bytes:
     >>> cut_utf8(b"abc\\xe2\\x82")
     b'abc'
     """
+    if not isinstance(data, (bytes, bytearray, memoryview)):
+        raise TypeError(f"data must be bytes-like, got {type(data).__name__}")
+    if isinstance(data, memoryview):
+        data = data.cast("B")
     if max_bytes is not None:
         check_limit(max_bytes)
     end = len(data) if max_bytes is None else min(len(data), max_bytes)

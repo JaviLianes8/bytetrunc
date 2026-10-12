@@ -5,6 +5,8 @@ from __future__ import annotations
 from ._core import Boundary, truncate_detailed
 from ._encodings import Encoding, check_limit, normalize_encoding
 
+NUL = chr(0)
+
 
 def truncate_filename(
     name: str,
@@ -26,8 +28,10 @@ def truncate_filename(
 
     This function measures and cuts; it does not sanitize. Names that are not a single
     path component (empty, ``.``, ``..``, or containing ``/`` or NUL) are rejected
-    with ``ValueError``. So is an extension too long to leave room for at least one
-    unit of the stem; pass ``keep_extension=False`` to cut the name as plain text.
+    with ``ValueError``, as is a ``suffix`` containing ``/`` or NUL, a result that would
+    be empty, ``.`` or ``..``, and an extension too long to leave room for at least one
+    unit of the stem (pass ``keep_extension=False`` to cut the name as plain text). A
+    backslash is not treated as a separator; reject it yourself on Windows.
 
     >>> truncate_filename("quarterly report.pdf", 12)
     'quarterl.pdf'
@@ -36,10 +40,19 @@ def truncate_filename(
     """
     check_limit(max_bytes)
     enc = normalize_encoding(encoding)
-    if name in ("", ".", "..") or "/" in name or "\0" in name:
+    if name in ("", ".", "..") or "/" in name or NUL in name:
         raise ValueError(f"not a single file name component: {name!r}")
+    if "/" in suffix or NUL in suffix:
+        raise ValueError(f"suffix must not contain '/' or NUL: {suffix!r}")
+    result = _fit(name, max_bytes, suffix, on, enc, keep_extension)
+    if result in ("", ".", ".."):
+        raise ValueError(f"no usable file name fits within max_bytes={max_bytes}: {result!r}")
+    return result
+
+
+def _fit(name: str, max_bytes: int, suffix: str, on: Boundary, enc: str, keep: bool) -> str:
     dot = name.rfind(".")
-    if not keep_extension or dot <= 0:
+    if not keep or dot <= 0:
         return truncate_detailed(name, max_bytes, suffix, on, encoding=enc).text
     stem, extension = name[:dot], name[dot:]
     if len(name.encode(enc)) <= max_bytes:

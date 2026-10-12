@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from collections.abc import Sequence
 from typing import NoReturn
 
 from . import __version__
 from ._chunk import chunk_bytes
-from ._core import byte_len, truncate_bytes
+from ._core import Boundary, byte_len, truncate_bytes
 from ._encodings import ENCODINGS
 from ._filename import truncate_filename
 
@@ -22,7 +23,9 @@ examples:
   printf 'h\\xc3\\xa9llo\\n' | bytetrunc count --encoding utf-16-le
 
 Input is read from stdin as UTF-8 and output is written as UTF-8. --encoding only
-changes how bytes are counted. Errors go to stderr with exit status 1.
+changes how bytes are counted. truncate and count work line by line; chunk treats
+all of stdin as one text, so use -0 when it holds newlines. Errors go to stderr with
+exit status 1.
 """
 
 
@@ -57,13 +60,20 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--version", action="version", version=f"bytetrunc {__version__}")
     sub = parser.add_subparsers(dest="command", required=True, parser_class=_Parser)
     common = _Parser(add_help=False)
-    common.add_argument("-e", "--encoding", default="utf-8", choices=ENCODINGS)
+    common.add_argument(
+        "-e",
+        "--encoding",
+        default="utf-8",
+        choices=ENCODINGS,
+        help="how bytes are counted (default utf-8); input and output stay UTF-8",
+    )
     boundary = _Parser(add_help=False)
     boundary.add_argument(
         "--on",
         choices=("char", "grapheme"),
         default=None,
-        help="cut on code points (default) or whole grapheme clusters",
+        help="cut on code points or whole grapheme clusters "
+        "(default: char, or grapheme with --keep-extension)",
     )
     trunc = sub.add_parser(
         "truncate",
@@ -72,7 +82,7 @@ def build_parser() -> argparse.ArgumentParser:
         epilog=_example("truncate 10 --suffix ...", "a long status message"),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    trunc.add_argument("max_bytes", type=_limit, metavar="N")
+    trunc.add_argument("max_bytes", type=_limit, metavar="N", help="byte limit per line")
     trunc.add_argument("-s", "--suffix", default="", help="appended when a line is cut")
     trunc.add_argument(
         "--keep-extension",
@@ -86,9 +96,12 @@ def build_parser() -> argparse.ArgumentParser:
         epilog=_example("chunk 8", "one long SMS body"),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    chunk.add_argument("max_bytes", type=_limit, metavar="N")
+    chunk.add_argument("max_bytes", type=_limit, metavar="N", help="byte limit per piece")
     chunk.add_argument(
-        "-0", "--null", action="store_true", help="end each piece with NUL, not newline"
+        "-0",
+        "--null",
+        action="store_true",
+        help="end each piece with NUL, not newline (needed when the text has newlines)",
     )
     sub.add_parser(
         "count",
@@ -126,17 +139,22 @@ def _run(args: argparse.Namespace, text: str) -> str:
         sep = "\0" if args.null else "\n"
         return "".join(piece + sep for piece in pieces)
     out: list[str] = []
-    for body, end in _lines(text):
-        if args.keep_extension:
-            cut = truncate_filename(
-                body, args.max_bytes, args.suffix, on or "grapheme", encoding=args.encoding
-            )
-        else:
-            cut = truncate_bytes(
-                body, args.max_bytes, args.suffix, on or "char", encoding=args.encoding
-            )
-        out.append(cut + end)
+    for number, (body, end) in enumerate(_lines(text), 1):
+        try:
+            out.append(_truncate_line(args, body, on) + end)
+        except ValueError as exc:
+            raise ValueError(f"line {number}: {exc}") from None
     return "".join(out)
+
+
+def _truncate_line(args: argparse.Namespace, body: str, on: Boundary | None) -> str:
+    if args.keep_extension:
+        if not body:
+            return body
+        return truncate_filename(
+            body, args.max_bytes, args.suffix, on or "grapheme", encoding=args.encoding
+        )
+    return truncate_bytes(body, args.max_bytes, args.suffix, on or "char", encoding=args.encoding)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -148,6 +166,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     except ValueError as exc:
         print(f"bytetrunc: error: {exc}", file=sys.stderr)
         return 1
-    sys.stdout.buffer.write(result.encode("utf-8"))
-    sys.stdout.buffer.flush()
+    try:
+        sys.stdout.buffer.write(result.encode("utf-8"))
+        sys.stdout.buffer.flush()
+    except BrokenPipeError:
+        # The reader went away (for example `| head -1`); exit quietly like other filters.
+        devnull = os.open(os.devnull, os.O_WRONLY)
+        os.dup2(devnull, sys.stdout.fileno())
     return 0

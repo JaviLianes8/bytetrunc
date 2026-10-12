@@ -53,6 +53,7 @@ def utf16_len(s: str) -> int:
     """Return the length of ``s`` in UTF-16 code units, as JavaScript's ``.length``.
 
     Characters outside the Basic Multilingual Plane, such as most emoji, count as two.
+    Unlike JavaScript, a lone surrogate raises ``UnicodeEncodeError``.
 
     >>> utf16_len("a😀")
     3

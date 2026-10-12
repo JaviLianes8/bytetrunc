@@ -70,8 +70,8 @@ printf 'one long SMS body\n' | bytetrunc chunk 8
 printf 'héllo\n' | bytetrunc count --encoding utf-16-le
 ```
 
-Every function returns the input unchanged when it already fits, and otherwise
-guarantees the result stays within the limit. Bad arguments raise `ValueError` with a
+The `truncate_*` functions return the input unchanged when it already fits, and
+otherwise guarantee the result stays within the limit. Bad arguments raise `ValueError` with a
 message that says what to change. See [GUIDE.md](GUIDE.md) for real-world byte limits,
 how to choose a boundary, and the conformance story.
 
@@ -88,8 +88,9 @@ no runtime dependencies.
 
 ## License
 
-MIT. See [LICENSE](LICENSE). The Unicode data files in `data/ucd/` are covered by the
-[Unicode License v3](https://www.unicode.org/license.txt).
+MIT. See [LICENSE](LICENSE). The Unicode data files in `data/ucd/` and the tables generated
+from them are covered by the [Unicode License v3](LICENSE-UNICODE), fetched from
+https://www.unicode.org/license.txt.
 
 ## Links
 

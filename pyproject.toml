@@ -9,7 +9,7 @@ description = "Truncate a string to a maximum number of UTF-8 bytes on a safe ch
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
-license-files = ["LICENSE"]
+license-files = ["LICENSE", "LICENSE-UNICODE"]
 authors = [{ name = "Javier Lianes", email = "javier@lianes8studio.com" }]
 keywords = ["utf-8", "truncate", "bytes", "unicode", "grapheme", "uax29", "utf-16", "filename", "sms"]
 classifiers = [

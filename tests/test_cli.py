@@ -94,3 +94,20 @@ def test_help_examples_produce_what_the_docs_say() -> None:
     done = run("truncate", "10", "--suffix", "...", stdin=b"a long status message\n")
     assert done.stdout == b"a long ...\n"
     assert run("count", "--encoding", "utf-16-le", stdin="h\u00e9llo\n".encode()).stdout == b"10\n"
+
+
+def test_keep_extension_passes_empty_lines_and_names_the_failing_line() -> None:
+    done = run("truncate", "6", "--keep-extension", stdin=b"a.txt\n\nlonger.txt\n")
+    assert (done.returncode, done.stdout) == (0, b"a.txt\n\nlo.txt\n")
+    failed = run("truncate", "1", "--keep-extension", stdin=b"a\n.hidden\n")
+    assert failed.returncode == 1 and failed.stdout == b""
+    assert b"line 2:" in failed.stderr
+
+
+def test_every_option_has_help() -> None:
+    for command in ("truncate", "chunk", "count"):
+        text = " ".join(run(command, "--help").stdout.decode().split())
+        assert "how bytes are counted" in text
+    assert "byte limit per line" in run("truncate", "--help").stdout.decode()
+    chunk_help = " ".join(run("chunk", "--help").stdout.decode().split())
+    assert "needed when the text has newlines" in chunk_help

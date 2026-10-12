@@ -159,12 +159,16 @@ def main(argv: list[str]) -> int:
         for n, t in files.items()
         if not (OUT_DIR / n).is_file() or (OUT_DIR / n).read_text(encoding="utf-8") != t
     ]
+    stale += sorted(p.name for p in OUT_DIR.glob("_ucd_part*.py") if p.name not in files)
     if "--check" in argv:
         for name in stale:
             print(f"stale: {name}", file=sys.stderr)
         return 1 if stale else 0
     for name, text in files.items():
         (OUT_DIR / name).write_text(text, encoding="utf-8", newline="\n")
+    for path in OUT_DIR.glob("_ucd_part*.py"):
+        if path.name not in files:
+            path.unlink()
     return 0
 
 

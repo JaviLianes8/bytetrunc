@@ -107,3 +107,29 @@ def test_cut_utf8_with_a_limit() -> None:
 def test_cut_utf8_leaves_invalid_bytes_alone() -> None:
     assert cut_utf8(b"ab\xff") == b"ab\xff"
     assert cut_utf8(b"\x80\x80\x80\x80\x80") == b"\x80\x80\x80\x80\x80"
+
+
+def test_filename_never_returns_dot_or_dot_dot() -> None:
+    for name, limit, kwargs in [
+        ("...", 2, {}),
+        (".hidden", 1, {}),
+        (".hidden", 3, {"encoding": "utf-16-le"}),
+        ("..hidden", 2, {"keep_extension": False}),
+    ]:
+        with pytest.raises(ValueError, match="no usable file name"):
+            truncate_filename(name, limit, **kwargs)  # type: ignore[arg-type]
+
+
+def test_filename_suffix_must_stay_one_component() -> None:
+    for suffix in ("/", "a\0"):
+        with pytest.raises(ValueError, match="suffix"):
+            truncate_filename("abcdef.txt", 8, suffix=suffix)
+
+
+def test_cut_utf8_accepts_bytes_like_and_rejects_text() -> None:
+    assert cut_utf8(bytearray(b"ab\xc3"), None) == b"ab"
+    assert cut_utf8(memoryview(b"ab\xc3\xa9"), 3) == b"ab"
+    with pytest.raises(TypeError, match="bytes-like"):
+        cut_utf8("abc", 2)  # type: ignore[arg-type]
+    with pytest.raises(TypeError, match="encoding must be a str"):
+        byte_len("a", 5)  # type: ignore[arg-type]

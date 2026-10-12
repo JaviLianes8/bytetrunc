@@ -106,8 +106,11 @@ printf 'one long SMS body\n' | bytetrunc chunk 8
 printf 'héllo\n' | bytetrunc count --encoding utf-16-le
 ```
 
-Input and output are UTF-8; `--encoding` changes only how bytes are counted. Errors
-are printed to stderr and the exit status is 1.
+Input and output are UTF-8; `--encoding` changes only how bytes are counted.
+`truncate` and `count` work line by line (with `--keep-extension`, empty lines pass
+through). `chunk` treats all of stdin as one text, so pass `-0` when it holds newlines
+to keep the pieces unambiguous. Errors are printed to stderr with the failing line
+number, and the exit status is 1.
 
 ## Conformance
 
