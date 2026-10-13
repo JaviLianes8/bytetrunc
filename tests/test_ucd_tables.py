@@ -1,15 +1,15 @@
-"""The embedded tables must equal a fresh run of the generator over the UCD snapshot."""
+"""The embedded tables must equal a fresh run of the generator over the fetched UCD files."""
 
 from __future__ import annotations
 
 import hashlib
 import importlib.util
-import re
 from pathlib import Path
 from types import ModuleType
 
+from conftest import MANIFEST, UCD, needs_ucd
+
 ROOT = Path(__file__).resolve().parent.parent
-UCD = ROOT / "data" / "ucd"
 PACKAGE = ROOT / "src" / "bytetrunc"
 
 
@@ -23,6 +23,7 @@ def _generator() -> ModuleType:
     return module
 
 
+@needs_ucd
 def test_committed_tables_equal_generator_output() -> None:
     files = _generator().render(UCD)
     assert files, "generator produced nothing"
@@ -30,31 +31,25 @@ def test_committed_tables_equal_generator_output() -> None:
         assert (PACKAGE / name).read_text(encoding="utf-8") == text, f"{name} is stale"
 
 
+@needs_ucd
 def test_no_stray_generated_parts() -> None:
     expected = set(_generator().render(UCD))
     present = {p.name for p in PACKAGE.glob("_ucd_part*.py")} | {"_ucd_data.py"}
     assert present == expected
 
 
+@needs_ucd
 def test_generated_modules_stay_short() -> None:
     for name in _generator().render(UCD):
         assert len((PACKAGE / name).read_text(encoding="utf-8").splitlines()) <= 200
 
 
-def test_snapshot_checksums_match_sources_record() -> None:
-    record = (UCD / "SOURCES.txt").read_text(encoding="utf-8")
-    listed = dict(
-        (name, digest) for digest, name in re.findall(r"^\s+([0-9a-f]{64})\s+(\S+)$", record, re.M)
-    )
-    assert set(listed) == {
-        "GraphemeBreakTest.txt",
-        "GraphemeBreakProperty.txt",
-        "emoji-data.txt",
-        "DerivedCoreProperties.txt",
-    }
-    for name, digest in listed.items():
-        data = (UCD / name).read_bytes().replace(b"\r\n", b"\n")
-        assert hashlib.sha256(data).hexdigest() == digest, name
+@needs_ucd
+def test_snapshot_files_match_the_manifest() -> None:
+    assert {p.name for p in UCD.glob("*.txt")} == set(MANIFEST)
+    for name, entry in MANIFEST.items():
+        data = (UCD / name).read_bytes()
+        assert (len(data), hashlib.sha256(data).hexdigest()) == (entry["size"], entry["sha256"])
 
 
 def test_spot_properties_from_the_tables() -> None:

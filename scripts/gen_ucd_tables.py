@@ -1,11 +1,12 @@
-"""Generate the embedded Unicode property tables from the committed UCD snapshot.
+"""Generate the embedded Unicode property tables from the fetched UCD files.
 
 Usage::
 
     python scripts/gen_ucd_tables.py            # rewrite src/bytetrunc/_ucd_*.py
     python scripts/gen_ucd_tables.py --check    # exit 1 if the files are stale
 
-Inputs live in ``data/ucd/`` (see ``data/ucd/SOURCES.txt`` for URLs and fetch date):
+Inputs live in ``data/ucd/``, which git ignores: ``python scripts/fetch_upstream.py``
+fetches them as pinned in ``data/ucd/MANIFEST.json`` (URL, Unicode version, sha256):
 GraphemeBreakProperty.txt, emoji-data.txt (Extended_Pictographic) and
 DerivedCoreProperties.txt (Indic_Conjunct_Break). The output is a run-length list that
 covers every code point from U+0000 to U+10FFFF. Each run stores a property code:
@@ -153,6 +154,9 @@ def render(ucd_dir: Path = UCD_DIR) -> dict[str, str]:
 
 
 def main(argv: list[str]) -> int:
+    if not (UCD_DIR / "GraphemeBreakProperty.txt").is_file():
+        print("data/ucd/ is not fetched; run python scripts/fetch_upstream.py", file=sys.stderr)
+        return 0 if "--check" in argv else 1
     files = render()
     stale = [
         n

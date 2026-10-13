@@ -17,7 +17,7 @@ from ._filename import truncate_filename
 from ._graphemes import iter_graphemes
 from ._ucd import UNICODE_VERSION
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 __all__ = [
     "ENCODINGS",
