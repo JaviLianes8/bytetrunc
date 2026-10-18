@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from bytetrunc import (
+    BytetruncError,
     Truncation,
     byte_len,
     iter_graphemes,
@@ -30,7 +31,7 @@ def test_byte_len_in_each_encoding() -> None:
 
 def test_byte_order_mark_encodings_are_rejected() -> None:
     for name in ("utf-16", "utf-32", "utf-8-sig", "latin-1", "no-such-codec"):
-        with pytest.raises(ValueError, match="unsupported encoding"):
+        with pytest.raises(BytetruncError, match="unsupported encoding"):
             byte_len("a", name)
 
 
@@ -54,7 +55,7 @@ def test_utf16_units_match_javascript_length() -> None:
     assert truncate_utf16("ab\U0001f600", 3) == "ab"
     assert truncate_utf16("ab\U0001f600", 4) == "ab\U0001f600"
     assert truncate_utf16("hello world", 8, suffix="...") == "hello..."
-    with pytest.raises(ValueError, match="max_units"):
+    with pytest.raises(BytetruncError, match="max_units"):
         truncate_utf16("abc", -1)
 
 
@@ -92,7 +93,8 @@ def test_char_mode_may_split_a_cluster_but_never_a_code_point() -> None:
 
 def test_grapheme_mode_with_suffix_and_utf16() -> None:
     text = "ok " + FLAG + FLAG
-    assert truncate_bytes(text, 16, "~", "grapheme", encoding="utf-16-le") == "ok " + FLAG + "~"
+    got = truncate_bytes(text, 16, suffix="~", on="grapheme", encoding="utf-16-le")
+    assert got == "ok " + FLAG + "~"
 
 
 def test_crlf_is_one_cluster() -> None:
@@ -110,3 +112,5 @@ def test_limit_type_is_checked() -> None:
         truncate_bytes("abc", 2.5)  # type: ignore[arg-type]
     with pytest.raises(TypeError):
         truncate_bytes("abc", True)
+    with pytest.raises(TypeError, match="max_bytes must be an integer, got float"):
+        truncate_bytes("abc", 2.0)  # type: ignore[arg-type]

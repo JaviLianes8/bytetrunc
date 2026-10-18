@@ -1,3 +1,7 @@
+"""The first promise of bytetrunc: UTF-8 byte budgets, suffixes and the two boundaries."""
+
+from __future__ import annotations
+
 import pytest
 
 from bytetrunc import byte_len, truncate_bytes

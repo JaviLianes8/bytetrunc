@@ -3,29 +3,15 @@
 from __future__ import annotations
 
 import hashlib
-import importlib.util
-from pathlib import Path
-from types import ModuleType
 
-from conftest import MANIFEST, UCD, needs_ucd
+from conftest import MANIFEST, ROOT, UCD, generator, needs_ucd
 
-ROOT = Path(__file__).resolve().parent.parent
 PACKAGE = ROOT / "src" / "bytetrunc"
-
-
-def _generator() -> ModuleType:
-    spec = importlib.util.spec_from_file_location(
-        "gen_ucd_tables", ROOT / "scripts" / "gen_ucd_tables.py"
-    )
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
 
 
 @needs_ucd
 def test_committed_tables_equal_generator_output() -> None:
-    files = _generator().render(UCD)
+    files = generator().render(UCD)
     assert files, "generator produced nothing"
     for name, text in files.items():
         assert (PACKAGE / name).read_text(encoding="utf-8") == text, f"{name} is stale"
@@ -33,14 +19,14 @@ def test_committed_tables_equal_generator_output() -> None:
 
 @needs_ucd
 def test_no_stray_generated_parts() -> None:
-    expected = set(_generator().render(UCD))
+    expected = set(generator().render(UCD))
     present = {p.name for p in PACKAGE.glob("_ucd_part*.py")} | {"_ucd_data.py"}
     assert present == expected
 
 
 @needs_ucd
 def test_generated_modules_stay_short() -> None:
-    for name in _generator().render(UCD):
+    for name in generator().render(UCD):
         assert len((PACKAGE / name).read_text(encoding="utf-8").splitlines()) <= 200
 
 

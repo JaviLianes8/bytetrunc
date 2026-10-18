@@ -1,10 +1,18 @@
-"""The complete public promise of bytetrunc, one test per clause."""
+"""The public surface of bytetrunc: names, signatures, the result record and the error type.
+
+The behaviour each public name promises is pinned in tests/test_promises.py.
+"""
 
 from __future__ import annotations
 
+import copy
+import dataclasses
 import importlib.resources
+import inspect
+import pickle
 import re
 from pathlib import Path
+from typing import get_args
 
 import pytest
 
@@ -12,16 +20,14 @@ import bytetrunc
 from bytetrunc import (
     ENCODINGS,
     UNICODE_VERSION,
+    Boundary,
+    BytetruncError,
+    Encoding,
     Truncation,
     byte_len,
-    chunk_bytes,
-    cut_utf8,
-    iter_graphemes,
     truncate_bytes,
     truncate_detailed,
-    truncate_filename,
     truncate_utf16,
-    utf16_len,
 )
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -31,6 +37,7 @@ PUBLIC_API: list[str] = [
     "ENCODINGS",
     "UNICODE_VERSION",
     "Boundary",
+    "BytetruncError",
     "Encoding",
     "Truncation",
     "byte_len",
@@ -43,23 +50,36 @@ PUBLIC_API: list[str] = [
     "truncate_utf16",
     "utf16_len",
 ]
-SAMPLE = (
-    "Na\u00efve caf\u00e9 \U0001f469\u200d\U0001f4bb \U0001f1ef\U0001f1f5 \ud55c\uae00 e\u0301!"
-)
+OPTIONS = "*, suffix: 'str' = '', on: 'Boundary' = 'char', encoding: 'Encoding | str' = 'utf-8'"
+SIGNATURES = {
+    "byte_len": "(s: 'str', encoding: 'Encoding | str' = 'utf-8') -> 'int'",
+    "chunk_bytes": "(s: 'str', max_bytes: 'SupportsIndex', *, on: 'Boundary' = 'char', "
+    "encoding: 'Encoding | str' = 'utf-8') -> 'list[str]'",
+    "cut_utf8": "(data: 'bytes | bytearray | memoryview', "
+    "max_bytes: 'SupportsIndex | None' = None) -> 'bytes'",
+    "iter_graphemes": "(s: 'str') -> 'Iterator[str]'",
+    "truncate_bytes": f"(s: 'str', max_bytes: 'SupportsIndex', {OPTIONS}) -> 'str'",
+    "truncate_detailed": f"(s: 'str', max_bytes: 'SupportsIndex', {OPTIONS}) -> 'Truncation'",
+    "truncate_filename": "(name: 'str', max_bytes: 'SupportsIndex' = 255, *, suffix: 'str' = '', "
+    "on: 'Boundary' = 'grapheme', encoding: 'Encoding | str' = 'utf-8', "
+    "keep_extension: 'bool' = True) -> 'str'",
+    "truncate_utf16": "(s: 'str', max_units: 'SupportsIndex', *, suffix: 'str' = '', "
+    "on: 'Boundary' = 'char') -> 'str'",
+    "utf16_len": "(s: 'str') -> 'int'",
+}
 
 
 def test_all_lists_exactly_the_public_api() -> None:
-    assert sorted(bytetrunc.__all__) == sorted(PUBLIC_API)
-    for name in bytetrunc.__all__:
-        assert hasattr(bytetrunc, name)
+    assert bytetrunc.__all__ == PUBLIC_API
+    public = sorted(name for name in dir(bytetrunc) if not name.startswith("_"))
+    assert public == sorted(PUBLIC_API)
 
 
 def test_version_matches_pyproject_and_is_three_part() -> None:
     pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
     match = re.search(r'^version = "([^"]+)"', pyproject, re.M)
     assert match is not None and match.group(1) == bytetrunc.__version__
-    assert all(part.isdigit() for part in bytetrunc.__version__.split("."))
-    assert len(bytetrunc.__version__.split(".")) == 3
+    assert re.fullmatch(r"\d+\.\d+\.\d+", bytetrunc.__version__)
 
 
 def test_the_package_ships_type_information_and_a_script() -> None:
@@ -69,94 +89,90 @@ def test_the_package_ships_type_information_and_a_script() -> None:
     assert re.search(r"^dependencies = \[\]$", pyproject, re.M)
 
 
-def test_unicode_version_and_encodings_are_declared() -> None:
+def test_unicode_version_encodings_and_literal_types_are_declared() -> None:
     assert UNICODE_VERSION == "18.0.0"
     assert ENCODINGS == ("utf-8", "utf-16-le", "utf-16-be", "utf-32-le", "utf-32-be")
+    assert get_args(Encoding) == ENCODINGS
+    assert get_args(Boundary) == ("char", "grapheme")
 
 
-@pytest.mark.parametrize("encoding", ENCODINGS)
-@pytest.mark.parametrize("on", ["char", "grapheme"])
-def test_truncate_promise_for_every_limit(encoding: str, on: str) -> None:
-    total = byte_len(SAMPLE, encoding)
-    clusters = list(iter_graphemes(SAMPLE))
-    boundaries = {sum(len(c) for c in clusters[:i]) for i in range(len(clusters) + 1)}
-    for limit in range(total + 3):
-        for suffix in ("", "..."):
-            if limit < total and byte_len(suffix, encoding) > limit:
-                with pytest.raises(ValueError, match="suffix"):
-                    truncate_bytes(SAMPLE, limit, suffix, on, encoding=encoding)  # type: ignore[arg-type]
-                continue
-            result = truncate_detailed(SAMPLE, limit, suffix, on, encoding=encoding)  # type: ignore[arg-type]
-            assert result.size == byte_len(result.text, encoding) <= limit
-            assert result.truncated == (total > limit)
-            if not result.truncated:
-                assert result.text == SAMPLE  # fits: unchanged, no suffix
-                continue
-            head = result.text[: len(result.text) - len(suffix)]
-            assert result.text == head + suffix and SAMPLE.startswith(head)
-            if on == "grapheme":
-                assert len(head) in boundaries
+@pytest.mark.parametrize("name", sorted(SIGNATURES))
+def test_function_signatures_are_pinned(name: str) -> None:
+    assert str(inspect.signature(getattr(bytetrunc, name))) == SIGNATURES[name]
 
 
-def test_errors_are_honest() -> None:
-    with pytest.raises(ValueError, match="negative"):
+def test_truncation_is_a_frozen_record_with_pinned_fields() -> None:
+    fields = [(field.name, field.type) for field in dataclasses.fields(Truncation)]
+    assert fields == [
+        ("text", "str"),
+        ("size", "int"),
+        ("original_size", "int"),
+        ("limit", "int"),
+        ("encoding", "Encoding"),
+        ("truncated", "bool"),
+    ]
+    result = truncate_detailed("h\N{LATIN SMALL LETTER E WITH ACUTE}llo", 3)
+    assert result == Truncation("h\N{LATIN SMALL LETTER E WITH ACUTE}", 3, 6, 3, "utf-8", True)
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        result.text = "x"  # type: ignore[misc]
+    assert not hasattr(result, "__dict__")  # slots: no stray attributes
+    for twin in (pickle.loads(pickle.dumps(result)), copy.copy(result), copy.deepcopy(result)):
+        assert twin == result and hash(twin) == hash(result)
+    assert dataclasses.replace(result, size=4) == Truncation("h\xe9", 4, 6, 3, "utf-8", True)
+    assert Truncation.__module__ == "bytetrunc"
+    assert repr(result) == (
+        "Truncation(text='h\xe9', size=3, original_size=6, limit=3, encoding='utf-8', "
+        "truncated=True)"
+    )
+
+
+def test_bytetrunc_error_is_a_value_error_that_pickles() -> None:
+    assert issubclass(BytetruncError, ValueError) and BytetruncError.__module__ == "bytetrunc"
+    error = BytetruncError("bad")
+    again = pickle.loads(pickle.dumps(error))
+    assert (type(again), str(again)) == (BytetruncError, "bad")
+
+
+def test_refusals_are_bytetrunc_errors_with_the_reason() -> None:
+    with pytest.raises(BytetruncError, match="max_bytes must not be negative, got -1"):
         truncate_bytes("abc", -1)
-    with pytest.raises(ValueError, match="on must be"):
+    with pytest.raises(BytetruncError, match="on must be 'char' or 'grapheme', got 'word'"):
         truncate_bytes("abc", 1, on="word")  # type: ignore[arg-type]
-    with pytest.raises(ValueError, match="unsupported encoding"):
+    with pytest.raises(BytetruncError, match="unsupported encoding 'utf-16'"):
         truncate_bytes("abc", 1, encoding="utf-16")
-    with pytest.raises(ValueError, match="suffix needs 3 bytes"):
-        truncate_bytes("abcdef", 2, "...")
+    with pytest.raises(
+        BytetruncError, match="suffix needs 3 bytes in utf-8, more than max_bytes=2"
+    ):
+        truncate_bytes("abcdef", 2, suffix="...")
+    with pytest.raises(BytetruncError, match="suffix needs 3 UTF-16 units, more than max_units=2"):
+        truncate_utf16("abcdef", 2, suffix="...")
     with pytest.raises(UnicodeEncodeError):
         byte_len("\udc00")
+    assert truncate_bytes("ab", 2, suffix="...") == "ab"  # a suffix too big is fine when it fits
 
 
-def test_detailed_result_is_a_frozen_record() -> None:
-    result = truncate_detailed("h\u00e9llo", 3)
-    assert isinstance(result, Truncation)
-    assert (result.text, result.size, result.original_size) == ("h\u00e9", 3, 6)
-    assert (result.limit, result.encoding, result.truncated) == (3, "utf-8", True)
-
-
-def test_utf16_unit_promise() -> None:
-    assert utf16_len(SAMPLE) == byte_len(SAMPLE, "utf-16-le") // 2
-    for units in range(utf16_len(SAMPLE) + 1):
-        assert utf16_len(truncate_utf16(SAMPLE, units)) <= units
-
-
-def test_chunk_promise() -> None:
-    for limit in range(4, 30):
-        for on in ("char", "grapheme"):
-            try:
-                pieces = chunk_bytes(SAMPLE, limit, on)
-            except ValueError as exc:
-                assert "needs" in str(exc)
-                continue
-            assert "".join(pieces) == SAMPLE
-            assert all(0 < byte_len(p) <= limit for p in pieces)
-
-
-def test_cut_utf8_promise() -> None:
-    data = SAMPLE.encode()
-    for limit in range(len(data) + 1):
-        cut = cut_utf8(data, limit)
-        assert data.startswith(cut) and len(cut) <= limit
-        assert cut.decode() == truncate_bytes(SAMPLE, limit)
-        assert cut_utf8(data[:limit]) == cut
-
-
-def test_filename_promise() -> None:
-    name = SAMPLE.replace(" ", "_") + ".json"
-    for limit in range(6, byte_len(name) + 1):
-        cut = truncate_filename(name, limit)
-        assert byte_len(cut) <= limit and cut.endswith(".json")
-        assert name.startswith(cut[: -len(".json")])
-
-
-def test_graphemes_promise() -> None:
-    clusters = list(iter_graphemes(SAMPLE))
-    assert "".join(clusters) == SAMPLE
-    assert "\U0001f469\u200d\U0001f4bb" in clusters
-    assert "\U0001f1ef\U0001f1f5" in clusters
-    assert "e\u0301" in clusters
-    assert list(iter_graphemes("")) == []
+@pytest.mark.parametrize(
+    "call",
+    [
+        lambda: truncate_bytes(b"abc", 2),  # type: ignore[arg-type]
+        lambda: truncate_bytes("abc", "2"),  # type: ignore[arg-type]
+        lambda: truncate_bytes("abc", 2.0),  # type: ignore[arg-type]
+        lambda: truncate_bytes("abc", True),
+        lambda: truncate_bytes("abc", None),  # type: ignore[arg-type]
+        lambda: truncate_bytes("abc", 2, suffix=None),  # type: ignore[arg-type]
+        lambda: truncate_bytes("abc", 2, on=None),  # type: ignore[arg-type]
+        lambda: truncate_bytes("abc", 2, encoding=b"utf-8"),  # type: ignore[arg-type]
+        lambda: byte_len(None),  # type: ignore[arg-type]
+        lambda: truncate_utf16(["a"], 1),  # type: ignore[arg-type]
+        lambda: bytetrunc.utf16_len(b"a"),  # type: ignore[arg-type]
+        lambda: bytetrunc.chunk_bytes("abc", 1.5),  # type: ignore[arg-type]
+        lambda: bytetrunc.cut_utf8("abc"),  # type: ignore[arg-type]
+        lambda: bytetrunc.cut_utf8(b"abc", 1.0),  # type: ignore[arg-type]
+        lambda: bytetrunc.iter_graphemes(b"abc"),  # type: ignore[arg-type]
+        lambda: bytetrunc.truncate_filename(b"a.txt"),  # type: ignore[arg-type]
+        lambda: bytetrunc.truncate_filename("a.txt", keep_extension=1),  # type: ignore[arg-type]
+    ],
+)
+def test_wrong_argument_types_raise_type_error(call: object) -> None:
+    with pytest.raises(TypeError):
+        call()  # type: ignore[operator]

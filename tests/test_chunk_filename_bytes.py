@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-from bytetrunc import byte_len, chunk_bytes, cut_utf8, truncate_filename
+from bytetrunc import BytetruncError, byte_len, chunk_bytes, cut_utf8, truncate_filename
 
 FAMILY = "\U0001f468\u200d\U0001f469\u200d\U0001f467"
 
@@ -38,11 +38,11 @@ def test_grapheme_chunks_keep_emoji_sequences_whole() -> None:
 
 
 def test_cluster_larger_than_limit_is_an_honest_error() -> None:
-    with pytest.raises(ValueError, match="grapheme cluster at index 2 needs 18 bytes"):
+    with pytest.raises(BytetruncError, match="grapheme cluster at index 2 needs 18 bytes"):
         chunk_bytes("ab" + FAMILY, 10, on="grapheme")
-    with pytest.raises(ValueError, match="character at index 1 needs 4 bytes"):
+    with pytest.raises(BytetruncError, match="character at index 1 needs 4 bytes"):
         chunk_bytes("a\U0001f600", 3)
-    with pytest.raises(ValueError, match="positive"):
+    with pytest.raises(BytetruncError, match="positive"):
         chunk_bytes("abc", 0)
 
 
@@ -77,9 +77,9 @@ def test_filename_for_ntfs_counts_utf16_units() -> None:
 
 def test_filename_rejections() -> None:
     for bad in ("", ".", "..", "a/b.txt", "a\0b"):
-        with pytest.raises(ValueError, match="single file name"):
+        with pytest.raises(BytetruncError, match="single file name"):
             truncate_filename(bad, 10)
-    with pytest.raises(ValueError, match="keep_extension=False"):
+    with pytest.raises(BytetruncError, match="keep_extension=False"):
         truncate_filename("a.verylongextension", 8)
     assert truncate_filename("a.verylongextension", 8, keep_extension=False) == "a.verylo"
 
@@ -100,7 +100,7 @@ def test_cut_utf8_with_a_limit() -> None:
     assert cut_utf8(data, 10) == "h\u00e9llo ".encode()
     assert cut_utf8(data, 99) == data
     assert cut_utf8(data, 0) == b""
-    with pytest.raises(ValueError):
+    with pytest.raises(BytetruncError):
         cut_utf8(data, -1)
 
 
@@ -116,20 +116,20 @@ def test_filename_never_returns_dot_or_dot_dot() -> None:
         (".hidden", 3, {"encoding": "utf-16-le"}),
         ("..hidden", 2, {"keep_extension": False}),
     ]:
-        with pytest.raises(ValueError, match="no usable file name"):
+        with pytest.raises(BytetruncError, match="no usable file name"):
             truncate_filename(name, limit, **kwargs)  # type: ignore[arg-type]
 
 
 def test_filename_suffix_must_stay_one_component() -> None:
     for suffix in ("/", "a\0"):
-        with pytest.raises(ValueError, match="suffix"):
+        with pytest.raises(BytetruncError, match="suffix"):
             truncate_filename("abcdef.txt", 8, suffix=suffix)
 
 
 def test_cut_utf8_accepts_bytes_like_and_rejects_text() -> None:
     assert cut_utf8(bytearray(b"ab\xc3"), None) == b"ab"
     assert cut_utf8(memoryview(b"ab\xc3\xa9"), 3) == b"ab"
-    with pytest.raises(TypeError, match="bytes-like"):
+    with pytest.raises(TypeError, match="data must be bytes, bytearray or memoryview, got str"):
         cut_utf8("abc", 2)  # type: ignore[arg-type]
     with pytest.raises(TypeError, match="encoding must be a str"):
         byte_len("a", 5)  # type: ignore[arg-type]
