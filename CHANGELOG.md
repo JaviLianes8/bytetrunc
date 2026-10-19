@@ -21,7 +21,8 @@ minor release and change `UNICODE_VERSION`.
 
 - `BytetruncError`, a subclass of `ValueError`, raised for every value bytetrunc refuses.
   `except ValueError` keeps working.
-- Docstring examples on every public name, run as doctests.
+- Docstring examples on every public name, run as doctests, and the errors each public
+  function raises.
 
 ### Changed
 
@@ -41,7 +42,9 @@ minor release and change `UNICODE_VERSION`.
   as `u8`, `cp65001` or `UnicodeLittleUnmarked`) still work. Unknown names no longer add
   entries to Python's codec cache. Other spellings the codec registry used to accept,
   such as names with dots (`utf.16le`), tabs or newlines, or a non-ASCII hyphen, now
-  raise `BytetruncError`. `ENCODINGS` and `Truncation.encoding` are typed with
+  raise `BytetruncError`. Some names the codec registry refused are now accepted, such
+  as `utf16le`, `UTF16-BE` or `utf32be`, since only the separators differ from a
+  supported name. `ENCODINGS` and `Truncation.encoding` are typed with
   the `Encoding` literal.
 - Error messages quote at most 32 characters of any text and print very wide integers
   by their size, so they stay short whatever the input. The suffix error of

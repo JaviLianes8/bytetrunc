@@ -37,7 +37,10 @@ def truncate_filename(
     result that would be empty, ``.`` or ``..``, and an extension too long to leave room
     for at least one character of the stem (pass ``keep_extension=False`` to cut the
     name as plain text). A backslash is not treated as a separator; refuse it yourself
-    on Windows.
+    on Windows. It also raises :class:`~bytetrunc.BytetruncError` for a negative
+    ``max_bytes`` or an unsupported ``on`` or ``encoding``, :class:`TypeError` for
+    arguments of the wrong type and :class:`UnicodeEncodeError` if ``name`` or
+    ``suffix`` holds a lone surrogate.
 
     >>> from bytetrunc import truncate_filename
     >>> truncate_filename("quarterly report.pdf", 12)

@@ -61,6 +61,10 @@ Truncation.__module__ = "bytetrunc"
 def byte_len(s: str, encoding: Encoding | str = "utf-8") -> int:
     """Return the number of bytes ``s`` occupies in ``encoding`` (UTF-8 by default).
 
+    Raises :class:`~bytetrunc.BytetruncError` if ``encoding`` is not supported,
+    :class:`TypeError` for arguments of the wrong type and :class:`UnicodeEncodeError`
+    if ``s`` holds a lone surrogate.
+
     >>> from bytetrunc import byte_len
     >>> byte_len("héllo")
     6
@@ -76,7 +80,8 @@ def utf16_len(s: str) -> int:
     ``.length`` reports.
 
     Characters outside the Basic Multilingual Plane, such as most emoji, count as two.
-    Unlike JavaScript, a lone surrogate raises :class:`UnicodeEncodeError`.
+    Unlike JavaScript, a lone surrogate raises :class:`UnicodeEncodeError`. A non-``str``
+    argument raises :class:`TypeError`.
 
     >>> from bytetrunc import utf16_len
     >>> utf16_len("a😀")
@@ -117,6 +122,8 @@ def truncate_detailed(
     encoding: Encoding | str = "utf-8",
 ) -> Truncation:
     """Like :func:`truncate_bytes`, but return a :class:`Truncation` with the byte counts.
+
+    It raises the same errors as :func:`truncate_bytes`.
 
     >>> from bytetrunc import truncate_detailed
     >>> t = truncate_detailed("héllo world", 8, suffix="...")
@@ -174,6 +181,11 @@ def truncate_utf16(
     Use it to enforce on the server the same limit a browser ``maxlength`` or a
     JavaScript check applies. A surrogate pair is never split, and ``suffix`` counts
     against the limit as in :func:`truncate_bytes`.
+
+    Raises :class:`~bytetrunc.BytetruncError` if ``max_units`` is negative, if ``on`` is
+    not supported, or if ``s`` does not fit and ``suffix`` alone is longer than
+    ``max_units``; :class:`TypeError` for arguments of the wrong type; and
+    :class:`UnicodeEncodeError` if ``s`` or ``suffix`` holds a lone surrogate.
 
     >>> from bytetrunc import truncate_utf16
     >>> truncate_utf16("ab😀", 3)
