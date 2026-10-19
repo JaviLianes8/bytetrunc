@@ -287,6 +287,27 @@ Gates on 7a9c37b: `ruff format --check .`, `ruff check .` and `mypy --strict src
 on this PC (CPython 3.13.2). `pytest` exits 0 on a clean clone on another machine
 (CPython 3.14, with `BYTETRUNC_E2E=1`: 310 passed, 14 skipped).
 
+### Round 1 again (lenses a, c and e, on 50bb92d, checked on ea8d9c0)
+
+The round 1 findings of lenses a, c and e were sent again, against 50bb92d. Each one was
+checked by running it on ea8d9c0. Twelve of them were already fixed in 4a0d6ca, as
+round 1 above records: A-1 (GUIDE names the `byte_len` exception), A-3 (each doc block
+runs on its own), A-4 (CLI hint is `run without --keep-extension`), lens c F1 (`repr` of a
+result with a limit of 10**5000) and lens e F1 to F8 (each contract is in place). Two
+were new or only half done. They were fixed in 3ca0802, and none is disputed.
+
+| Finding | Lens | Fix | Contract |
+| --- | --- | --- | --- |
+| A-5 `byte_len` and `truncate_utf16` docstrings name no error, `utf16_len` leaves out `TypeError` | a | docstrings name every error, as do `truncate_filename` (negative limit, `on`, `encoding`, `TypeError`, `UnicodeEncodeError`) and `truncate_detailed` (same errors as `truncate_bytes`) | `tests/test_doctests.py::test_every_public_function_documents_its_errors`, `test_truncate_detailed_documents_its_errors_by_reference` (failed on ea8d9c0), `test_the_documented_errors_are_the_ones_raised` |
+| A-2 CHANGELOG said nothing about names newly accepted | a | CHANGELOG: `utf16le`, `UTF16-BE` and `utf32be` are accepted now; the codec registry refuses them | (docs) |
+
+The docstring changes are documentation only, so behaviour and the API are unchanged.
+
+Gates on 3ca0802: `ruff format --check .`, `ruff check .`, `mypy --strict src` and
+`mypy --strict src tests` exit 0 on this PC (CPython 3.13.2). `pytest` exits 0 on a clean
+clone from GitHub on a machine granted by the turn system (CPython 3.14, with the fetched
+upstream files, `regex` and `BYTETRUNC_E2E=1`): 1196 passed, no skips.
+
 ### Disputed findings
 
 None.
