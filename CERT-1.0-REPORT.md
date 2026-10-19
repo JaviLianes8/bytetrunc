@@ -17,7 +17,8 @@ Progress:
 - [x] Packaging, e2e, every Python (items 8, 10, 13, 14)
 - [x] Gates (item 15)
 - [x] PR and trace guard CLEAN
-- [ ] Five QA lenses (item 19) and independent reviewer (item 16): round 1 findings fixed (see QA), re-verification pending
+- [x] Five QA lenses (item 19) and independent reviewer (item 16): all PASS (see Final verdicts)
+- [x] Final gates, build and installed-wheel suite on a fresh clone from GitHub
 
 ## Scorecard (author)
 
@@ -289,3 +290,51 @@ on this PC (CPython 3.13.2). `pytest` exits 0 on a clean clone on another machin
 ### Disputed findings
 
 None.
+
+## Final verdicts (items 16 and 19)
+
+Each lens ran on its own fresh clone and reported only to the release owner. Reports are
+kept in the local certification folder (`bytetrunc-cert/`, not in the repository); where a
+lens returned its report inline instead of as a file, the column says so.
+
+| Lens | Rounds | Final verdict | Report | Commit |
+| --- | --- | --- | --- | --- |
+| a. API and docs | 2 | PASS | returned inline (round 2) | 6ebaaec |
+| b. Correctness and ground truth | 1 | PASS | returned inline; scripts in `bytetrunc-cert/lens-b-r1/scripts` | 50bb92d |
+| c. Adversarial and robustness | 3 | PASS | returned inline (round 3); probes in `bytetrunc-cert/lens-c-r3/probes/r3.py` | e653da6 |
+| d. Packaging and real e2e | 1 | PASS | `bytetrunc-cert/lens-d-r1/REPORT.md` | 50bb92d |
+| e. Contract strength | 5 | PASS | `bytetrunc-cert/lens-e-r5/REPORT.md` | fcc59a9 |
+| Independent reviewer | 1 | PASS | returned inline | fcc59a9 |
+
+Lens b, in short: its own UAX #29 oracle written from the live rule text passed 853 of 853
+official cases, as did the library; the property tables matched for all 0x110000 code
+points; 300,000 seeded strings, 20,000 each against the `regex` module and
+`Intl.Segmenter`, 270,583 codec checks, 2,881,353 `cut_utf8` checks against an RFC 3629
+oracle, 60,000 `truncate_filename` cases and 33,649 UTF-16 checks against Node.js all gave
+no difference, and every README and GUIDE fact matched its fetched source. Lens c's last
+round confirmed C1 to C3 fixed and found nothing in 34 new probes. Lens e's last round
+confirmed E4-S2 fixed: of 10 new mutants, 9 were killed and 1 is equivalent.
+
+Reviewer scorecard (round 1, fcc59a9):
+
+| # | Item | Result |
+| --- | --- | --- |
+| 1 | Public API reviewed for stability | PASS |
+| 2 | `__all__` exact, no private imports in docs | PASS |
+| 3 | Docstrings with runnable examples, doctests | PASS |
+| 4 | Typed end to end | PASS |
+| 5 | Typed, documented, bounded errors | PASS |
+| 6 | Contract tests of every public name | PASS |
+| 7 | Real ground truth | PASS |
+| 8 | Real e2e from the wheel | PASS |
+| 9 | Seeded fuzz, no crash, hang or blowup | PASS |
+| 10 | Supported Pythons | PASS |
+| 11 | README and `twine check` | PASS |
+| 12 | Dated CHANGELOG section | PASS |
+| 13 | pyproject 1.0.0, Production/Stable | PASS |
+| 14 | sdist and wheel contents | PASS |
+| 15 | Gates each exit 0 | PASS |
+| 16 | Independent review | PASS |
+| 17 | PR from `release/1.0.0`, trace guard clean | PASS |
+| 18 | Contracts bite (mutations) | PASS |
+| 19 | Five QA lenses | PASS |
