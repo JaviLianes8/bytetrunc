@@ -282,6 +282,10 @@ unchanged; it was fixed in the commit that records this round and is not dispute
 Re-check: S2 was applied to `_rawbytes.py` on this PC and fails `tests/test_messages.py`;
 the unmutated file passes.
 
+Gates on 7a9c37b: `ruff format --check .`, `ruff check .` and `mypy --strict src tests` exit 0
+on this PC (CPython 3.13.2). `pytest` exits 0 on a clean clone on another machine
+(CPython 3.14, with `BYTETRUNC_E2E=1`: 310 passed, 14 skipped).
+
 ### Disputed findings
 
 None.
