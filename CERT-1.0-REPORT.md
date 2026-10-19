@@ -8,11 +8,11 @@ first published version; every change since 0.2.1, the last version in the CHANG
 Progress:
 - [x] Branch `release/1.0.0` created from `main` (0.2.1, ef98f2d)
 - [x] Baseline gates on 0.2.1
-- [ ] API review and 1.0.0 changes (item 1)
-- [ ] Errors, typing, docstrings and doctests (items 2 to 5)
-- [ ] Ground truth: Unicode files and UAX #29 fetched live, reference implementations (item 7)
+- [x] API review and 1.0.0 changes (item 1)
+- [x] Errors, typing, docstrings and doctests (items 2 to 5)
+- [x] Ground truth: Unicode files and UAX #29 fetched live, reference implementations (item 7)
 - [ ] Contract, fuzz and author mutation round (items 6, 9, 18)
-- [ ] Docs: README, GUIDE, CHANGELOG (items 11, 12)
+- [x] Docs: README, GUIDE, CHANGELOG (items 11, 12)
 - [ ] Packaging, e2e, every Python (items 8, 10, 13, 14)
 - [ ] Gates (item 15)
 - [ ] PR and trace guard CLEAN

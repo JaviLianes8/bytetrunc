@@ -59,7 +59,7 @@ truncate_bytes("an important message", 12, suffix="...")  # -> 'an import...'
 ```
 
 The suffix is only added when the input was cut. If the suffix alone is larger than
-the limit, `ValueError` is raised rather than silently returning something too long.
+the limit, `BytetruncError` is raised rather than silently returning something too long.
 
 ## Other encodings
 
@@ -81,7 +81,7 @@ t = truncate_detailed("héllo world", 8, suffix="...")
 
 `chunk_bytes(s, max_bytes)` fills pieces greedily and `"".join(pieces) == s` always
 holds. When one character or cluster is larger than the limit on its own, it raises
-`ValueError` naming the index and size instead of emitting an oversized piece.
+`BytetruncError` naming the index and size instead of emitting an oversized piece.
 
 ## Raw bytes
 
@@ -110,7 +110,36 @@ Input and output are UTF-8; `--encoding` changes only how bytes are counted.
 `truncate` and `count` work line by line (with `--keep-extension`, empty lines pass
 through). `chunk` treats all of stdin as one text, so pass `-0` when it holds newlines
 to keep the pieces unambiguous. Errors are printed to stderr with the failing line
-number, and the exit status is 1.
+number, and the exit status is 1. A wrong command line (an unknown option, a limit
+that is not a number) exits with 2, like other argparse programs.
+
+## Errors
+
+Every value bytetrunc refuses raises `BytetruncError`, which subclasses `ValueError`: a
+negative limit (or a zero limit for `chunk_bytes`), an unknown `on` or `encoding`, a
+suffix larger than the limit, a character or cluster larger than a chunk, and a file
+name that is not a single path component. An argument of the wrong type (bytes for
+text, a float for a limit, a string for `keep_extension`) raises `TypeError`, and text
+holding a lone surrogate raises Python's `UnicodeEncodeError`. Messages quote at most
+the first 32 characters of any text, so logging them is safe whatever the input size.
+
+```python
+from bytetrunc import BytetruncError
+
+try:
+    truncate_bytes("an important message", 2, suffix="...")
+except BytetruncError as error:
+    message = str(error)
+message  # -> 'suffix needs 3 bytes in utf-8, more than max_bytes=2'
+```
+
+## Stability
+
+From 1.0.0 the names in `bytetrunc.__all__`, their parameters, defaults and error types
+follow Semantic Versioning. `suffix`, `on`, `encoding` and `keep_extension` are
+keyword-only. Modules whose names start with an underscore are private. A new Unicode
+version changes some cluster boundaries and comes in a minor release, together with
+`UNICODE_VERSION`.
 
 ## Conformance
 

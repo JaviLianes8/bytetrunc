@@ -6,6 +6,49 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-19
+
+The first stable release. The fifteen names in `bytetrunc.__all__`, their signatures,
+defaults, return types and error types are now stable and follow Semantic Versioning:
+`truncate_bytes`, `truncate_detailed`, `truncate_utf16`, `truncate_filename`,
+`chunk_bytes`, `cut_utf8`, `byte_len`, `utf16_len`, `iter_graphemes`, `Truncation`,
+`BytetruncError`, `Boundary`, `Encoding`, `ENCODINGS` and `UNICODE_VERSION`, plus the
+`bytetrunc` command (`truncate`, `chunk`, `count`) and its exit statuses. The grapheme
+cluster rules and data follow Unicode 18.0.0; a later Unicode version will come in a
+minor release and change `UNICODE_VERSION`.
+
+### Added
+
+- `BytetruncError`, a subclass of `ValueError`, raised for every value bytetrunc refuses.
+  `except ValueError` keeps working.
+- Docstring examples on every public name, run as doctests.
+
+### Changed
+
+- `suffix` and `on` are keyword-only in `truncate_bytes`, `truncate_detailed`,
+  `truncate_utf16` and `truncate_filename` (as `encoding` and `keep_extension` already
+  were). Write `truncate_bytes(s, 10, suffix="...")`, not `truncate_bytes(s, 10, "...")`.
+- Limits accept any integer type with `__index__` (for example NumPy integers) and are
+  stored as a plain `int` in `Truncation.limit`. `bool` is still refused.
+- Arguments of the wrong type raise `TypeError` in every function: the text, the suffix,
+  `on`, `encoding`, the file name and `keep_extension` (which must be a real `bool`).
+  `iter_graphemes` raises it at the call, not at the first item. A `str` subclass is
+  read as plain text and the result is always a plain `str`.
+- Encoding names are matched without the codec registry: ASCII case, hyphens,
+  underscores and spaces are ignored, and Python's own aliases of the five codecs (such
+  as `u8`, `cp65001` or `UnicodeLittleUnmarked`) still work. Unknown names no longer add
+  entries to Python's codec cache. `ENCODINGS` and `Truncation.encoding` are typed with
+  the `Encoding` literal.
+- Error messages quote at most 32 characters of any text and print very wide integers
+  by their size, so they stay short whatever the input. The suffix error of
+  `truncate_utf16` counts UTF-16 units.
+- `cut_utf8` drops a trailing sequence only when it is the unfinished start of a
+  well-formed UTF-8 character (RFC 3629 ranges); every other byte is kept, valid or not,
+  for a strict decode to reject. A `memoryview` of any format or layout is cut by its
+  raw bytes.
+- The command exits with 2 for a wrong command line (it was 1) and `--encoding` accepts
+  the same names as the library.
+
 ## [0.2.1]
 
 ### Changed

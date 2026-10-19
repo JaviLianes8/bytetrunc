@@ -116,7 +116,8 @@ def test_wheel_and_sdist_hold_exactly_what_they_should(dist: Path) -> None:
     assert {f"{INFO}licenses/LICENSE", f"{INFO}licenses/LICENSE-UNICODE"} <= set(names)
     metadata = zipfile.ZipFile(wheel).read(f"{INFO}METADATA").decode()
     assert "Classifier: Development Status :: 5 - Production/Stable" in metadata
-    assert "Requires-Dist" not in metadata.replace("extra == 'dev'", "")
+    requires = [line for line in metadata.splitlines() if line.startswith("Requires-Dist:")]
+    assert requires and all(line.replace('"', "'").endswith("extra == 'dev'") for line in requires)
     (sdist,) = dist.glob("bytetrunc-*.tar.gz")
     with tarfile.open(sdist) as archive:
         listed = [n.split("/", 1)[1] for n in archive.getnames() if "/" in n]
