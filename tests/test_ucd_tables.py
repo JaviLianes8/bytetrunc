@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 import hashlib
+from pathlib import Path
 
-from conftest import MANIFEST, ROOT, UCD, generator, needs_ucd
+from conftest import MANIFEST, UCD, generator, needs_ucd
 
-PACKAGE = ROOT / "src" / "bytetrunc"
+import bytetrunc
+
+# The imported package: the source tree, or the installed wheel when src is absent.
+PACKAGE = Path(bytetrunc.__file__).resolve().parent
 
 
 @needs_ucd
