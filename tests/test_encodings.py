@@ -22,6 +22,21 @@ def _python_names() -> list[str]:
     return sorted(MODULES) + aliases
 
 
+def _python_codec(spelling: str) -> str:
+    """The canonical name Python's registry gives ``spelling`` (LookupError if none).
+
+    On Windows, Python 3.14 also reads ``cp`` followed by an integer literal (``Cp6_5001``)
+    as a Windows code page and returns a codec named ``cp65001``. Code page 65001 is UTF-8,
+    which the codec's own output confirms here.
+    """
+    info = codecs.lookup(spelling)
+    if info.name == "cp65001":
+        sample = "aé€😀"
+        assert info.encode(sample)[0] == sample.encode("utf-8")
+        return "utf-8"
+    return info.name
+
+
 def _variants(name: str, rng: random.Random) -> list[str]:
     """Spellings of ``name`` that differ only in ASCII case and in -, _ and spaces."""
     found = [name, name.upper(), name.replace("_", "-"), name.replace("_", " ")]
@@ -44,7 +59,7 @@ def test_every_python_alias_of_the_five_codecs_is_accepted_like_python_does() ->
         for spelling in _variants(name, rng):
             ours = normalize_encoding(spelling)
             try:
-                theirs = codecs.lookup(spelling).name
+                theirs = _python_codec(spelling)
             except LookupError:
                 continue  # Python needs its own separators in some aliases; we do not
             assert ours == theirs, spelling
@@ -56,7 +71,7 @@ def test_an_accepted_name_never_means_another_codec_to_python() -> None:
     spellings += ["utf16le", "UTF32BE", "utf 8", "Utf8_Ucs4"]
     for spelling in spellings:
         with contextlib.suppress(LookupError):
-            assert codecs.lookup(spelling).name == normalize_encoding(spelling), spelling
+            assert _python_codec(spelling) == normalize_encoding(spelling), spelling
 
 
 @pytest.mark.parametrize(
