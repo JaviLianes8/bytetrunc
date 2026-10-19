@@ -338,3 +338,14 @@ Reviewer scorecard (round 1, fcc59a9):
 | 17 | PR from `release/1.0.0`, trace guard clean | PASS |
 | 18 | Contracts bite (mutations) | PASS |
 | 19 | Five QA lenses | PASS |
+
+## Final gates (219ce6a)
+
+On this PC (CPython 3.13.2), from a fresh clone of `release/1.0.0` from GitHub at 219ce6a
+with the nine upstream files fetched (all hashes match): `ruff format --check .`,
+`ruff check .`, `mypy --strict src`, `mypy --strict src tests` and
+`python scripts/gen_ucd_tables.py --check` exit 0, and `pytest` with `BYTETRUNC_E2E=1`
+exits 0 (1176 passed, no skips). `python -m build` exits 0 and `twine check --strict`
+PASSED for the wheel and the sdist. The wheel installed in a throwaway venv imports from
+`site-packages` (version 1.0.0) and the suite run against it with `src` removed, from an
+empty folder, exits 0 (1171 passed, 5 skipped: the e2e tests, which run in the gate above).
