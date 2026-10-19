@@ -216,6 +216,36 @@ on this PC (CPython 3.13.2); `pytest` exits 0 on a clean clone on another machin
 (conformance, `cut_utf8` grammar, UCD tables, oracles) plus doctests and contracts pass
 on this PC with the fetched files in place.
 
+### Round 2 (lenses c and e, on 6ebaaec)
+
+Lens c confirmed C1 and C2 fixed; lens e confirmed F1 to F8 fixed (each of its earlier
+mutants is killed by the named contract). Every new finding was fixed in 3c2afc5; none is
+disputed. The behaviour bug (C3) got a contract test that failed on 6ebaaec and passes
+after the fix; the other findings were missing contracts, now pinned by exact-value
+tests in `tests/test_messages.py`.
+
+| Finding | Lens | Fix | Contract |
+| --- | --- | --- | --- |
+| C3 a `ValueError` from the `__buffer__` of a `bytes` subclass became "data is a released memoryview" | c | `cut_utf8` converts the error only for a `memoryview` input (which cannot be subclassed); other errors reach the caller unchanged; docstring and CHANGELOG say so | `test_a_buffer_error_of_a_bytes_subclass_reaches_the_caller` |
+| G1 escaping of non-printable type names unpinned (N26, N27, N28) | e | contract only | `test_a_type_name_is_escaped_in_messages` (newline, ESC, U+200B, exact message) |
+| G2 CLI no-room line checked by substring (N03, N04) | e | contract only | `test_the_cli_no_room_error_line_is_exact` (full stderr) |
+| G3 library no-room message unpinned (N06) | e | contract only | `test_the_no_room_message_of_truncate_filename_is_exact` |
+| G4 top-level help summaries unpinned (N11, N35) | e | contract only | `test_the_top_level_help_names_the_limit_of_each_command` |
+| G5 `from None` of the released-view error unpinned (N34) | e | contract only | `test_a_released_memoryview_error_hides_the_internal_error` (`__suppress_context__` and formatted traceback) |
+| G6 `show_int` of `size` and `original_size` unpinned (N13, N15) | e | contract only; the promise is kept for all three integer fields and the CHANGELOG now names them | `test_every_integer_of_a_result_prints_by_its_size_when_huge` (exact repr) |
+
+Lens e's N12 (dropping `repr=False`) is equivalent: `dataclass` keeps a `__repr__` the
+class defines, so no test can tell it apart.
+
+Re-check: the twelve mutants named above (N03, N04, N06, N11, N13, N15, N26, N27, N28,
+N34, N35 and reverting the C3 fix) were applied one at a time to a copy of 3c2afc5 and
+each one fails `tests/test_messages.py`; the unmutated copy passes.
+
+Gates on 3c2afc5: `ruff format --check .`, `ruff check .`, `mypy --strict src tests` exit 0
+on this PC (CPython 3.13.2). `pytest` exits 0 on a clean clone with the fetched upstream
+files in place on another machine (CPython 3.14.2: 1163 passed, 6 skipped) and on a clean
+clone without them on a third machine (CPython 3.14: 298 passed, 19 skipped).
+
 ### Disputed findings
 
 None.
