@@ -42,10 +42,15 @@ def _complete_end(data: memoryview, end: int) -> int:
 def _bytes_view(data: object) -> memoryview:
     if not isinstance(data, (bytes, bytearray, memoryview)):
         raise TypeError(f"data must be bytes, bytearray or memoryview, got {type_name(data)}")
-    try:
+    if isinstance(data, memoryview):
+        # memoryview cannot be subclassed, so its ValueError here only means "released".
+        # Other inputs may define __buffer__ (PEP 688): their own errors reach the caller.
+        try:
+            view = memoryview(data)
+        except ValueError:
+            raise BytetruncError("data is a released memoryview") from None
+    else:
         view = memoryview(data)
-    except ValueError:
-        raise BytetruncError("data is a released memoryview") from None
     if not view.c_contiguous:
         view = memoryview(view.tobytes())
     return view.cast("B") if view.format != "B" or view.ndim != 1 else view
@@ -66,7 +71,8 @@ def cut_utf8(data: bytes | bytearray | memoryview, max_bytes: SupportsIndex | No
 
     Raises :class:`TypeError` for text or other types and
     :class:`~bytetrunc.BytetruncError` for a negative ``max_bytes`` or a ``memoryview``
-    that has been released.
+    that has been released. An error raised by the buffer export of a ``bytes`` or
+    ``bytearray`` subclass reaches the caller unchanged.
 
     >>> from bytetrunc import cut_utf8
     >>> cut_utf8("héllo".encode(), 2)

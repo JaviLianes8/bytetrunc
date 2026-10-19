@@ -49,9 +49,11 @@ minor release and change `UNICODE_VERSION`.
 - `cut_utf8` drops a trailing sequence only when it is the unfinished start of a
   well-formed UTF-8 character (RFC 3629 ranges); every other byte is kept, valid or not,
   for a strict decode to reject. A `memoryview` of any format or layout is cut by its
-  raw bytes. A released `memoryview` raises `BytetruncError`, not a bare `ValueError`.
-- The `repr` of a `Truncation` prints a limit too wide for Python's integer printing
-  limit (4300 digits) by its size, so printing or logging any result works.
+  raw bytes. A released `memoryview` raises `BytetruncError`, not a bare `ValueError`;
+  an error raised by the buffer export of a `bytes` or `bytearray` subclass reaches the
+  caller unchanged.
+- The `repr` of a `Truncation` prints a size, original size or limit too wide for
+  Python's integer printing limit (4300 digits) by its size, so printing or logging any result works.
 - Type names in `TypeError` messages are cut to 40 characters after escaping, so a
   class name made of non-printable characters stays short too.
 - The command exits with 2 for a wrong command line (it was 1) and `--encoding` accepts
