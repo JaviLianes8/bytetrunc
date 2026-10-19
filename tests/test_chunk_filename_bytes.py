@@ -42,6 +42,9 @@ def test_cluster_larger_than_limit_is_an_honest_error() -> None:
         chunk_bytes("ab" + FAMILY, 10, on="grapheme")
     with pytest.raises(BytetruncError, match="character at index 1 needs 4 bytes"):
         chunk_bytes("a\U0001f600", 3)
+    # The index counts characters, not bytes, after several multibyte pieces.
+    with pytest.raises(BytetruncError, match="character at index 3 needs 4 bytes"):
+        chunk_bytes("ééé\U0001f600", 3)
     with pytest.raises(BytetruncError, match="positive"):
         chunk_bytes("abc", 0)
 

@@ -189,3 +189,12 @@ def test_a_reader_that_goes_away_ends_the_program_quietly() -> None:
         child.stdout.close()
         status = child.wait(timeout=60)
         assert (status, child.stderr.read()) == (1, b"")
+
+
+def test_limits_past_4000_digits_are_refused_and_leading_zeros_are_not_digits() -> None:
+    done = run("truncate", "9" * 4001, stdin=b"abc\n")
+    assert (done.returncode, done.stdout) == (2, b"")
+    assert b"too large: an integer of 4001 digits" in done.stderr
+    done = run("truncate", "9" * 4000, stdin=b"abc\n")
+    assert (done.returncode, done.stdout) == (0, b"abc\n")
+    assert run("truncate", "0" * 5000 + "2", stdin=b"abc\n").stdout == b"ab\n"
