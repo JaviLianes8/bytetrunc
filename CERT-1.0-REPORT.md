@@ -266,6 +266,22 @@ Gates on 400abba: `ruff format --check .`, `ruff check .` and `mypy --strict src
 on this PC (CPython 3.13.2). `pytest` exits 0 on another machine (CPython 3.14, with
 `BYTETRUNC_E2E=1`, 1176 tests collected).
 
+### Round 4 (lens e, on 5799cf2)
+
+Lens e confirmed H1 to H3 fixed (P02, P06, P07, P11 and P14 are killed) and probed
+`_bytes_view` with 8 new mutants: five killed, two argued equivalent (S4 widens the handler
+around `memoryview()` of an exact `memoryview`, which runs no user hook; S7 re-raises the
+same object, which gains only a traceback frame), and one survivor. The finding was a
+missing contract, not a behaviour bug, so the library code, the API and the CHANGELOG are
+unchanged; it was fixed in the commit that records this round and is not disputed.
+
+| Finding | Lens | Fix | Contract |
+| --- | --- | --- | --- |
+| E4-S2 the released-view contract did not check `__cause__` (`from exc` instead of `from None` survived) | e | contract only | `test_a_released_memoryview_error_hides_the_internal_error` asserts `__cause__ is None` and that the traceback from `traceback.format_exception(error)` names neither a direct cause nor the internal "released memoryview object" error |
+
+Re-check: S2 was applied to `_rawbytes.py` on this PC and fails `tests/test_messages.py`;
+the unmutated file passes.
+
 ### Disputed findings
 
 None.

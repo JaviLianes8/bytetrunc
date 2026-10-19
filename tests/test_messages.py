@@ -57,8 +57,11 @@ def test_a_released_memoryview_error_hides_the_internal_error() -> None:
         cut_utf8(view, 1)
     assert str(caught.value) == "data is a released memoryview"
     assert caught.value.__suppress_context__ is True
-    shown = "".join(traceback.format_exception(BytetruncError, caught.value, None))
+    assert caught.value.__cause__ is None
+    shown = "".join(traceback.format_exception(caught.value))
     assert "During handling" not in shown
+    assert "direct cause" not in shown
+    assert "released memoryview object" not in shown
 
 
 class _CustomValueError(ValueError):
