@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import SupportsIndex
 
-from ._errors import check_limit, type_name
+from ._errors import BytetruncError, check_limit, type_name
 
 # Second-byte ranges that differ from 80..BF in well-formed UTF-8 (RFC 3629, section 4):
 # they exclude overlong forms, surrogates and code points above U+10FFFF.
@@ -42,7 +42,10 @@ def _complete_end(data: memoryview, end: int) -> int:
 def _bytes_view(data: object) -> memoryview:
     if not isinstance(data, (bytes, bytearray, memoryview)):
         raise TypeError(f"data must be bytes, bytearray or memoryview, got {type_name(data)}")
-    view = memoryview(data)
+    try:
+        view = memoryview(data)
+    except ValueError:
+        raise BytetruncError("data is a released memoryview") from None
     if not view.c_contiguous:
         view = memoryview(view.tobytes())
     return view.cast("B") if view.format != "B" or view.ndim != 1 else view
@@ -62,7 +65,8 @@ def cut_utf8(data: bytes | bytearray | memoryview, max_bytes: SupportsIndex | No
     character) gives valid UTF-8, and invalid bytes stay for a strict decode to reject.
 
     Raises :class:`TypeError` for text or other types and
-    :class:`~bytetrunc.BytetruncError` for a negative ``max_bytes``.
+    :class:`~bytetrunc.BytetruncError` for a negative ``max_bytes`` or a ``memoryview``
+    that has been released.
 
     >>> from bytetrunc import cut_utf8
     >>> cut_utf8("héllo".encode(), 2)

@@ -55,6 +55,8 @@ truncate_bytes("hi " + family, 10, on="grapheme")  # -> 'hi '
 ## Suffixes count against the limit
 
 ```python
+from bytetrunc import truncate_bytes
+
 truncate_bytes("an important message", 12, suffix="...")  # -> 'an import...'
 ```
 
@@ -109,8 +111,9 @@ printf 'héllo\n' | bytetrunc count --encoding utf-16-le
 Input and output are UTF-8; `--encoding` changes only how bytes are counted.
 `truncate` and `count` work line by line (with `--keep-extension`, empty lines pass
 through). `chunk` treats all of stdin as one text, so pass `-0` when it holds newlines
-to keep the pieces unambiguous. Errors are printed to stderr with the failing line
-number, and the exit status is 1. A wrong command line (an unknown option, a limit
+to keep the pieces unambiguous. Errors are printed to stderr and the exit status is 1:
+a `truncate` error names the failing line number, a `chunk` error names the index of
+the character (or cluster) in the whole text. A wrong command line (an unknown option, a limit
 that is not a number) exits with 2, like other argparse programs.
 
 ## Errors
@@ -124,7 +127,7 @@ holding a lone surrogate raises Python's `UnicodeEncodeError`. Messages quote at
 the first 32 characters of any text, so logging them is safe whatever the input size.
 
 ```python
-from bytetrunc import BytetruncError
+from bytetrunc import BytetruncError, truncate_bytes
 
 try:
     truncate_bytes("an important message", 2, suffix="...")
@@ -136,8 +139,9 @@ message  # -> 'suffix needs 3 bytes in utf-8, more than max_bytes=2'
 ## Stability
 
 From 1.0.0 the names in `bytetrunc.__all__`, their parameters, defaults and error types
-follow Semantic Versioning. `suffix`, `on`, `encoding` and `keep_extension` are
-keyword-only. Modules whose names start with an underscore are private. A new Unicode
+follow Semantic Versioning. `suffix`, `on` and `keep_extension` are keyword-only
+wherever they appear, and so is `encoding`, except in `byte_len(s, encoding)`, where it
+is the second positional parameter. Modules whose names start with an underscore are private. A new Unicode
 version changes some cluster boundaries and comes in a minor release, together with
 `UNICODE_VERSION`.
 

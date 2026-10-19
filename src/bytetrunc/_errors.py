@@ -34,7 +34,8 @@ def type_name(value: object) -> str:
     """Name the type of ``value`` for a message: escaped and cut to 40 characters."""
     # The slot of type itself: a metaclass property cannot replace or inflate the name.
     name = str.__str__(type.__dict__["__name__"].__get__(type(value)))[:_TYPE_NAME]
-    return "".join(ch if ch.isprintable() else ascii(ch)[1:-1] for ch in name)
+    # Escape first, then cut: an escape turns one character into up to ten.
+    return "".join(ch if ch.isprintable() else ascii(ch)[1:-1] for ch in name)[:_TYPE_NAME]
 
 
 def preview(text: str) -> str:
@@ -47,6 +48,14 @@ def describe(number: int) -> str:
     """Print an integer for a message, or only its size when it is very wide."""
     bits = number.bit_length()
     return str(number) if bits <= 64 else f"an integer of {bits} bits"
+
+
+def show_int(number: int) -> str:
+    """Write an integer in full, or by its size when Python refuses that many digits."""
+    try:
+        return repr(number)
+    except ValueError:
+        return describe(number)
 
 
 def check_text(value: object, name: str) -> str:

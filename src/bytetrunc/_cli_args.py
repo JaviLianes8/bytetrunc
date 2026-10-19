@@ -102,11 +102,11 @@ def build_parser(version: str) -> argparse.ArgumentParser:
     trunc = sub.add_parser(
         "truncate",
         parents=[common, boundary],
-        help="cut each stdin line to N bytes",
+        help="cut each stdin line to MAX_BYTES bytes",
         epilog=_example("truncate 10 --suffix ...", "a long status message"),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    trunc.add_argument("max_bytes", type=_limit, metavar="N", help="byte limit per line")
+    trunc.add_argument("max_bytes", type=_limit, metavar="MAX_BYTES", help="byte limit per line")
     trunc.add_argument(
         "-s", "--suffix", type=_suffix, default="", help="appended when a line is cut"
     )
@@ -118,11 +118,11 @@ def build_parser(version: str) -> argparse.ArgumentParser:
     chunk = sub.add_parser(
         "chunk",
         parents=[common, boundary],
-        help="split stdin into pieces of N bytes",
+        help="split stdin into pieces of MAX_BYTES bytes",
         epilog=_example("chunk 8", "one long SMS body"),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    chunk.add_argument("max_bytes", type=_limit, metavar="N", help="byte limit per piece")
+    chunk.add_argument("max_bytes", type=_limit, metavar="MAX_BYTES", help="byte limit per piece")
     chunk.add_argument(
         "-0",
         "--null",

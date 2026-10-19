@@ -28,6 +28,8 @@ minor release and change `UNICODE_VERSION`.
 - `suffix` and `on` are keyword-only in `truncate_bytes`, `truncate_detailed`,
   `truncate_utf16` and `truncate_filename` (as `encoding` and `keep_extension` already
   were). Write `truncate_bytes(s, 10, suffix="...")`, not `truncate_bytes(s, 10, "...")`.
+- `on` is keyword-only in `chunk_bytes`: write `chunk_bytes(s, 10, on="grapheme")`, not
+  `chunk_bytes(s, 10, "grapheme")`, which now raises `TypeError`.
 - Limits accept any integer type with `__index__` (for example NumPy integers) and are
   stored as a plain `int` in `Truncation.limit`. `bool` is still refused.
 - Arguments of the wrong type raise `TypeError` in every function: the text, the suffix,
@@ -37,7 +39,9 @@ minor release and change `UNICODE_VERSION`.
 - Encoding names are matched without the codec registry: ASCII case, hyphens,
   underscores and spaces are ignored, and Python's own aliases of the five codecs (such
   as `u8`, `cp65001` or `UnicodeLittleUnmarked`) still work. Unknown names no longer add
-  entries to Python's codec cache. `ENCODINGS` and `Truncation.encoding` are typed with
+  entries to Python's codec cache. Other spellings the codec registry used to accept,
+  such as names with dots (`utf.16le`), tabs or newlines, or a non-ASCII hyphen, now
+  raise `BytetruncError`. `ENCODINGS` and `Truncation.encoding` are typed with
   the `Encoding` literal.
 - Error messages quote at most 32 characters of any text and print very wide integers
   by their size, so they stay short whatever the input. The suffix error of
@@ -45,9 +49,15 @@ minor release and change `UNICODE_VERSION`.
 - `cut_utf8` drops a trailing sequence only when it is the unfinished start of a
   well-formed UTF-8 character (RFC 3629 ranges); every other byte is kept, valid or not,
   for a strict decode to reject. A `memoryview` of any format or layout is cut by its
-  raw bytes.
+  raw bytes. A released `memoryview` raises `BytetruncError`, not a bare `ValueError`.
+- The `repr` of a `Truncation` prints a limit too wide for Python's integer printing
+  limit (4300 digits) by its size, so printing or logging any result works.
+- Type names in `TypeError` messages are cut to 40 characters after escaping, so a
+  class name made of non-printable characters stays short too.
 - The command exits with 2 for a wrong command line (it was 1) and `--encoding` accepts
-  the same names as the library.
+  the same names as the library. The limit argument is called `MAX_BYTES` in the help and
+  in usage errors (it was `N`), matching the error messages, and an extension too long
+  for `--keep-extension` suggests running without that option.
 
 ## [0.2.1]
 

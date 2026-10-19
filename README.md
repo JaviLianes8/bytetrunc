@@ -37,6 +37,7 @@ from bytetrunc import (
     chunk_bytes,
     cut_utf8,
     iter_graphemes,
+    truncate_bytes,
     truncate_detailed,
     truncate_filename,
     truncate_utf16,

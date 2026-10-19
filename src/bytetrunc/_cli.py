@@ -13,7 +13,9 @@ from . import __version__
 from ._chunk import chunk_bytes
 from ._cli_args import build_parser
 from ._core import Boundary, byte_len, truncate_bytes
-from ._filename import truncate_filename
+from ._filename import NO_ROOM_HINT, truncate_filename
+
+CLI_HINT = "run without --keep-extension to cut it as plain text"
 
 
 def _lines(text: str) -> list[tuple[str, str]]:
@@ -61,7 +63,10 @@ def run(args: argparse.Namespace, text: str) -> str:
         try:
             out.append(_truncate_line(args, body, on) + end)
         except ValueError as exc:
-            raise ValueError(f"line {number}: {exc}") from None
+            message = str(exc)
+            if message.endswith(NO_ROOM_HINT):
+                message = message[: -len(NO_ROOM_HINT)] + CLI_HINT
+            raise ValueError(f"line {number}: {message}") from None
     return "".join(out)
 
 

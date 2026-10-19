@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Literal, SupportsIndex
 
 from ._encodings import Encoding, char_cut, normalize_encoding
-from ._errors import BytetruncError, check_limit, check_text, preview, type_name
+from ._errors import BytetruncError, check_limit, check_text, preview, show_int, type_name
 from ._graphemes import grapheme_ends
 
 Boundary = Literal["char", "grapheme"]
@@ -22,7 +22,7 @@ def check_boundary(on: object) -> Boundary:
     return name  # type: ignore[return-value]
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, repr=False)
 class Truncation:
     """The outcome of :func:`truncate_detailed`, with the byte counts.
 
@@ -45,6 +45,14 @@ class Truncation:
     limit: int
     encoding: Encoding
     truncated: bool
+
+    def __repr__(self) -> str:
+        # A limit wider than Python's integer printing limit is shown by its size.
+        return (
+            f"Truncation(text={self.text!r}, size={show_int(self.size)}, "
+            f"original_size={show_int(self.original_size)}, limit={show_int(self.limit)}, "
+            f"encoding={self.encoding!r}, truncated={self.truncated!r})"
+        )
 
 
 Truncation.__module__ = "bytetrunc"

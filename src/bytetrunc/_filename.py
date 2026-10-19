@@ -9,6 +9,7 @@ from ._encodings import Encoding, normalize_encoding
 from ._errors import BytetruncError, check_flag, check_limit, check_text, preview
 
 NUL = chr(0)
+NO_ROOM_HINT = "pass keep_extension=False to cut it as plain text"
 
 
 def truncate_filename(
@@ -75,5 +76,5 @@ def _fit(name: str, limit: int, suffix: str, on: Boundary, enc: Encoding, keep: 
             return result.text + extension
     raise BytetruncError(
         f"extension {preview(extension)} leaves no room for the name within "
-        f"max_bytes={limit}; pass keep_extension=False to cut it as plain text"
+        f"max_bytes={limit}; {NO_ROOM_HINT}"
     )

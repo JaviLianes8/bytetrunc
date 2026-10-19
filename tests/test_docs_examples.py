@@ -1,4 +1,5 @@
-"""Every ``expression  # -> value`` line in the README and GUIDE must hold."""
+"""Every python block of the README and GUIDE runs on its own, and every
+``expression  # -> value`` line in it holds."""
 
 from __future__ import annotations
 
@@ -15,9 +16,10 @@ BLOCK = re.compile(r"```python\n(.*?)```", re.S)
 @pytest.mark.parametrize("doc", ["README.md", "GUIDE.md"])
 def test_documented_results_are_true(doc: str) -> None:
     text = (ROOT / doc).read_text(encoding="utf-8")
-    namespace: dict[str, object] = {}
     checked = 0
     for block in BLOCK.findall(text):
+        # A fresh namespace per block: each example must carry its own imports.
+        namespace: dict[str, object] = {}
         lines: list[str] = []
         for line in block.splitlines():
             if "  # -> " in line:
