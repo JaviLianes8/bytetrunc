@@ -17,7 +17,7 @@ Progress:
 - [x] Packaging, e2e, every Python (items 8, 10, 13, 14)
 - [x] Gates (item 15)
 - [x] PR and trace guard CLEAN
-- [ ] Five QA lenses (item 19) and independent reviewer (item 16): run by the maintainer next
+- [ ] Five QA lenses (item 19) and independent reviewer (item 16): round 1 findings fixed (see QA), re-verification pending
 
 ## Scorecard (author)
 
@@ -179,3 +179,43 @@ argued in the table.
 | L3 | `_cli` | chunk separators swapped | killed | `tests/test_cli.py::test_chunk_and_null_separator` |
 | L4 | `_cli_args` | huge limits reach int() | survived | killed after the fix by `test_limits_past_4000_digits_are_refused_and_leading_zeros_are_not_digits` (added in e622459) |
 | L5 | `_cli` | empty lines sent to truncate_filename | killed | `tests/test_cli.py::test_keep_extension_passes_empty_lines` |
+
+## QA
+
+### Round 1 (lenses a, c and e, on 50bb92d)
+
+Every finding was fixed in 4a0d6ca; none is disputed. Behaviour bugs got a contract
+test first, which failed on 50bb92d and passes after the fix.
+
+| Finding | Lens | Fix | Contract |
+| --- | --- | --- | --- |
+| A1 `on` of `chunk_bytes` keyword-only, not in the CHANGELOG | a | CHANGELOG entry | (docs) |
+| A2 GUIDE says `encoding` is keyword-only, `byte_len` takes it positionally | a | GUIDE names the `byte_len` exception; API kept | (docs) |
+| A3 three doc blocks fail on their own (missing import) | a | imports added | `tests/test_docs_examples.py` runs each block in a fresh namespace |
+| A4 CLI error suggests `keep_extension=False`; argument called N, messages say max_bytes | a | CLI rewrites the hint to `run without --keep-extension`; metavar `MAX_BYTES` | `tests/test_cli_edges.py::test_cli_errors_name_options_of_the_command`, `test_the_limit_has_the_name_its_messages_use` |
+| A5 GUIDE promises a line number in every CLI error | a | GUIDE: line number for `truncate`, character index for `chunk` | (docs) |
+| A6 encoding spellings refused since 0.2.1 not in the CHANGELOG | a | CHANGELOG sentence (dots, tabs, newlines, non-ASCII hyphens) | (docs) |
+| C1 `repr(Truncation)` raises for a limit over 4300 digits | c | `Truncation.__repr__` prints such a limit by its size | `tests/test_edges.py::test_a_result_with_a_huge_limit_can_be_printed` |
+| C2 released `memoryview` gives a bare `ValueError` | c | `BytetruncError("data is a released memoryview")`, documented | `tests/test_edges.py::test_a_released_memoryview_is_refused_as_a_value` |
+| C observation: type name cut before escaping (421 characters) | c | escape first, then cut to 40 | `tests/test_arguments.py::test_type_names_in_messages_are_cut_to_40_characters` |
+| F1 str subclass result type | e | contract only | `tests/test_arguments.py::test_a_str_subclass_gives_plain_str_results` |
+| F2 suffix type check of `truncate_utf16` | e | contract only | `tests/test_arguments.py::test_every_argument_refuses_a_wrong_type` (all 30 function and argument pairs) |
+| F3 strided view of wide items | e | contract only | `tests/test_edges.py::test_a_strided_view_of_wide_items_is_cut_by_its_raw_bytes`, `test_a_fortran_order_view_of_wide_items_is_cut_by_its_raw_bytes` |
+| F4 chunk error size in the target encoding | e | contract only | `tests/test_edges.py::test_the_size_of_an_oversized_character_is_counted_in_the_encoding` |
+| F5 chunk strips exactly one line ending | e | contract only | `tests/test_cli_edges.py::test_chunk_strips_exactly_one_trailing_line_ending` |
+| F6 300-character cap on usage errors | e | contract only | `tests/test_cli_edges.py::test_a_huge_invalid_argument_gives_a_short_usage_error` |
+| F7 40-character cap on type names | e | contract only | `tests/test_arguments.py::test_type_names_in_messages_are_cut_to_40_characters` |
+| F8 ellipsis boundary of previews | e | contract only | `tests/test_arguments.py::test_previews_add_an_ellipsis_only_when_text_was_cut` |
+
+The eight lens e mutants (M85, M84, M66, M36, M70, M78, M30, M24) were applied again one
+at a time to 4a0d6ca: each one now fails the new contract named above.
+
+Gates on 4a0d6ca: `ruff format --check .`, `ruff check .`, `mypy --strict src tests` exit 0
+on this PC (CPython 3.13.2); `pytest` exits 0 on a clean clone on another machine
+(CPython 3.14, upstream-data tests skipped there), and the upstream-data test files
+(conformance, `cut_utf8` grammar, UCD tables, oracles) plus doctests and contracts pass
+on this PC with the fetched files in place.
+
+### Disputed findings
+
+None.
