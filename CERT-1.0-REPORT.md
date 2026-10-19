@@ -246,6 +246,26 @@ on this PC (CPython 3.13.2). `pytest` exits 0 on a clean clone with the fetched 
 files in place on another machine (CPython 3.14.2: 1163 passed, 6 skipped) and on a clean
 clone without them on a third machine (CPython 3.14: 298 passed, 19 skipped).
 
+### Round 3 (lens e, on e653da6)
+
+Lens e confirmed G1 to G6 fixed (N03, N04, N06, N11, N13, N15, N26, N27, N28, N34 and
+N35 are killed) and probed `_bytes_view` with 14 new mutants; five survived. All three
+findings were missing contracts, not behaviour bugs, so the library code, the API and
+the CHANGELOG are unchanged; every finding was fixed in 400abba and none is disputed.
+
+| Finding | Lens | Fix | Contract |
+| --- | --- | --- | --- |
+| H1 the buffer-error promise was tested for a `bytes` subclass only (P02 survived) | e | contract only | `test_a_buffer_error_of_a_bytes_subclass_reaches_the_caller` now runs for `bytes` and `bytearray` subclasses |
+| H2 only a plain `ValueError` was raised and only its type and text checked (P06, P07, P14 survived) | e | contract only | the same test raises `ValueError`, `BufferError`, `TypeError` and a `ValueError` subclass, and asserts the caller gets the very object raised with no `__context__` |
+| H3 the released-view message was matched by substring (P11 survived) | e | contract only | `test_a_released_memoryview_error_hides_the_internal_error` asserts the exact message |
+
+Re-check: P02, P06, P07, P11 and P14 were applied one at a time to `_rawbytes.py` on this
+PC and each one fails `tests/test_messages.py`; the unmutated file passes.
+
+Gates on 400abba: `ruff format --check .`, `ruff check .` and `mypy --strict src` exit 0
+on this PC (CPython 3.13.2). `pytest` exits 0 on another machine (CPython 3.14, with
+`BYTETRUNC_E2E=1`, 1176 tests collected).
+
 ### Disputed findings
 
 None.
