@@ -55,20 +55,32 @@ def test_a_released_memoryview_error_hides_the_internal_error() -> None:
     view.release()
     with pytest.raises(BytetruncError) as caught:
         cut_utf8(view, 1)
+    assert str(caught.value) == "data is a released memoryview"
     assert caught.value.__suppress_context__ is True
     shown = "".join(traceback.format_exception(BytetruncError, caught.value, None))
     assert "During handling" not in shown
 
 
-@pytest.mark.skipif(sys.version_info < (3, 12), reason="__buffer__ needs Python 3.12")
-def test_a_buffer_error_of_a_bytes_subclass_reaches_the_caller() -> None:
-    class Failing(bytes):
-        def __buffer__(self, flags: int) -> memoryview:
-            raise ValueError("custom buffer failure")
+class _CustomValueError(ValueError):
+    pass
 
-    with pytest.raises(ValueError) as caught:
-        cut_utf8(Failing(b"abc"), 2)
-    assert type(caught.value) is ValueError
+
+@pytest.mark.skipif(sys.version_info < (3, 12), reason="__buffer__ needs Python 3.12")
+@pytest.mark.parametrize("base", [bytes, bytearray])
+@pytest.mark.parametrize("error", [ValueError, BufferError, TypeError, _CustomValueError])
+def test_a_buffer_error_of_a_bytes_subclass_reaches_the_caller(
+    base: type, error: type[Exception]
+) -> None:
+    raised = error("custom buffer failure")
+
+    def fail(self: object, flags: int) -> memoryview:
+        raise raised
+
+    failing = type("Failing", (base,), {"__buffer__": fail})
+    with pytest.raises(error) as caught:
+        cut_utf8(failing(b"abc"), 2)
+    assert caught.value is raised
+    assert caught.value.__context__ is None
     assert str(caught.value) == "custom buffer failure"
 
 
