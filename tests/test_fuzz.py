@@ -9,6 +9,7 @@ import pytest
 from bytetrunc import (
     ENCODINGS,
     Boundary,
+    BytetruncError,
     chunk_bytes,
     cut_utf8,
     iter_graphemes,
@@ -93,10 +94,10 @@ def test_truncation_invariants() -> None:
     for text, enc, on, limit, suffix in CASES:
         size = len(text.encode(enc))
         if len(suffix.encode(enc)) > limit and size > limit:
-            with pytest.raises(ValueError):
-                truncate_detailed(text, limit, suffix, on, encoding=enc)
+            with pytest.raises(BytetruncError):
+                truncate_detailed(text, limit, suffix=suffix, on=on, encoding=enc)
             continue
-        result = truncate_detailed(text, limit, suffix, on, encoding=enc)
+        result = truncate_detailed(text, limit, suffix=suffix, on=on, encoding=enc)
         encoded = result.text.encode(enc)
         assert len(encoded) == result.size <= limit
         assert result.original_size == size
@@ -130,8 +131,8 @@ def test_chunk_invariants() -> None:
     for text, enc, on, _, _ in CASES[:1500]:
         limit = rng.randrange(4, 40)
         try:
-            pieces = chunk_bytes(text, limit, on, encoding=enc)
-        except ValueError:
+            pieces = chunk_bytes(text, limit, on=on, encoding=enc)
+        except BytetruncError:
             units = list(text) if on == "char" else list(iter_graphemes(text))
             assert any(len(u.encode(enc)) > limit for u in units)
             continue

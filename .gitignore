@@ -14,3 +14,5 @@ htmlcov/
 # Unicode data files, fetched locally by scripts/fetch_upstream.py; only the manifest is tracked.
 data/ucd/*
 !data/ucd/MANIFEST.json
+tests/upstream/*
+!tests/upstream/MANIFEST.json

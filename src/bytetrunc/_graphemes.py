@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
+from ._errors import check_text
 from ._ucd import EXT_PICT_BIT, GCB, INCB_SHIFT, prop
 
 _CR = GCB["CR"]
@@ -85,17 +86,24 @@ def _joins(
 
 
 def iter_graphemes(s: str) -> Iterator[str]:
-    """Yield the extended grapheme clusters of ``s`` (UAX #29), left to right.
+    """Return an iterator over the extended grapheme clusters of ``s`` (UAX #29).
 
     A grapheme cluster is what a reader perceives as one character: a base letter with
     its combining marks, a Hangul syllable built from jamo, an emoji ZWJ sequence, a
     flag made of two regional indicators, an Indic conjunct, or a CR LF pair. The
-    clusters concatenate back to ``s`` exactly.
+    clusters come left to right, are never empty, and concatenate back to ``s``
+    exactly. The rules and data are those of Unicode 18.0.0 (``UNICODE_VERSION``). A
+    non-``str`` argument raises :class:`TypeError` at the call, not at the first item.
 
+    >>> from bytetrunc import iter_graphemes
     >>> [len(g) for g in iter_graphemes("e\\u0301\\U0001f1ea\\U0001f1f8")]
     [2, 2]
     """
+    return _clusters(check_text(s, "s"))
+
+
+def _clusters(text: str) -> Iterator[str]:
     start = 0
-    for end in grapheme_ends(s):
-        yield s[start:end]
+    for end in grapheme_ends(text):
+        yield text[start:end]
         start = end

@@ -1,5 +1,7 @@
 # bytetrunc
 
+[![Lianes8 Certified](https://lianes8studio.com/certified/lianes8-certified-badge.svg)](https://lianes8studio.com/certified)
+
 Truncate a string to a maximum number of UTF-8 bytes on a safe character or grapheme
 boundary, with an optional counted suffix. Typed, zero dependencies, and conformant
 with Unicode 18.0.0 grapheme clusters (UAX #29).
@@ -35,6 +37,7 @@ from bytetrunc import (
     chunk_bytes,
     cut_utf8,
     iter_graphemes,
+    truncate_bytes,
     truncate_detailed,
     truncate_filename,
     truncate_utf16,
@@ -71,26 +74,39 @@ printf 'héllo\n' | bytetrunc count --encoding utf-16-le
 ```
 
 The `truncate_*` functions return the input unchanged when it already fits, and
-otherwise guarantee the result stays within the limit. Bad arguments raise `ValueError` with a
-message that says what to change. See [GUIDE.md](GUIDE.md) for real-world byte limits,
-how to choose a boundary, and the conformance story.
+otherwise guarantee the result stays within the limit. A value bytetrunc refuses (a
+negative limit, an unknown encoding, a suffix larger than the limit) raises
+`BytetruncError`, a subclass of `ValueError`, with a short message that says what to
+change; an argument of the wrong type raises `TypeError`. The command exits with 1 for
+input it cannot handle and 2 for a wrong command line. See the
+[guide](https://github.com/JaviLianes8/bytetrunc/blob/main/GUIDE.md) for real-world byte
+limits, how to choose a boundary and the conformance story, and the
+[changelog](https://github.com/JaviLianes8/bytetrunc/blob/main/CHANGELOG.md) for what
+changed in each version.
 
 ## Why
 
-Several languages ship this as a named primitive (truncating text to a byte limit on a
-safe boundary): Rust has `floor_char_boundary`, Go callers lean on `utf8.RuneCount`
-helpers, and JavaScript projects reach for `Buffer`-aware truncators. Python has no
-clean, typed package for it. The naive `s.encode("utf-8")[:n].decode()` throws on a
-split multibyte character, and ad-hoc fixes ignore grapheme clusters and the suffix
-budget. Reach for this when writing to a fixed-width column, a protocol field, or a
-store with a byte cap (database columns, headers, filenames). Pure standard library,
-no runtime dependencies.
+Databases, file systems, HTTP headers, SMS and push payloads cap the bytes of a text,
+not its length. The usual one-liner, `s.encode()[:n].decode("utf-8", "ignore")`, keeps
+whole code points, but it splits what a reader sees as one character (with `n=4` it
+turns `"man\u0303ana"` into `"man"`, an `n` without its tilde), it leaves the room for a
+`"..."` suffix to you, and with the default `errors="strict"` it raises instead.
+
+Grapheme clusters are covered on PyPI by the `regex` module (`\X`) and by `uniseg`,
+which find the clusters and leave the byte budget to you, and by `grapheme` 0.6.0
+(Unicode 13.0.0, last released in March 2020), whose helpers count and slice clusters,
+not bytes. bytetrunc does the byte budget itself: the suffix counted in the limit,
+UTF-8, UTF-16 and UTF-32 counts, JavaScript `.length` limits, chunking, file names and
+raw byte buffers, on Unicode 18.0.0 clusters checked against the official test file.
+It is typed, has no runtime dependencies and runs on CPython 3.10 to 3.14.
 
 ## License
 
-MIT. See [LICENSE](LICENSE). The property tables in `src/bytetrunc/_ucd_*.py` are generated
-from the Unicode Character Database and are covered by the [Unicode License v3](LICENSE-UNICODE), fetched from
-https://www.unicode.org/license.txt.
+MIT. See [LICENSE](https://github.com/JaviLianes8/bytetrunc/blob/main/LICENSE). The
+property tables in `src/bytetrunc/_ucd_*.py` are generated from the Unicode Character
+Database and are covered by the
+[Unicode License v3](https://github.com/JaviLianes8/bytetrunc/blob/main/LICENSE-UNICODE),
+fetched from https://www.unicode.org/license.txt.
 
 ## Links
 
